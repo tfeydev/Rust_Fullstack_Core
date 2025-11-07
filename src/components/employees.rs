@@ -1,12 +1,12 @@
 use crate::components::employee_modal::{EmployeeModal, ModalMode};
-use crate::db::{delete_employee, get_employees_server};
+use crate::db::{Employee, delete_employee, get_employees_server};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Employees() -> Element {
     let mut employees = use_resource(move || async move { get_employees_server().await });
     let mut modal_state = use_signal(|| None::<ModalMode>);
-    let mut delete_confirm = use_signal(|| None::<i32>);
+    let mut delete_confirm = use_signal(|| None::<Employee>);
 
     let handle_delete = move |id: i32| {
         spawn(async move {
@@ -90,8 +90,8 @@ pub fn Employees() -> Element {
                                                 button {
                                                     class: "text-red-600 hover:text-red-900",
                                                     onclick: {
-                                                        let id = employee.id;
-                                                        move |_| delete_confirm.set(Some(id))
+                                                        let emp = employee.clone();
+                                                        move |_| delete_confirm.set(Some(emp.clone()))
                                                     },
                                                     "🗑️ Delete"
                                                 }
@@ -123,13 +123,15 @@ pub fn Employees() -> Element {
         }
 
         // Delete Confirmation
-        if let Some(id) = delete_confirm() {
+        if let Some(employee) = delete_confirm() {
             div {
-                class: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
+                class: "fixed inset-0 flex items-center justify-center z-50",
+                style: "background-color: rgba(0, 0, 0, 0.4);",
                 div {
                     class: "bg-white rounded-lg p-6 max-w-sm mx-4",
                     h3 { class: "text-lg font-bold mb-4", "Delete Employee?" }
-                    p { class: "text-gray-600 mb-6", "Are you sure you want to delete this employee? This action cannot be undone." }
+                    p { class: "text-gray-600 mb-4", "Are you sure you want to delete {employee.first_name} {employee.last_name}?" }
+                    p { class: "text-gray-500 text-sm mb-6", "This action cannot be undone." }
                     div {
                         class: "flex justify-end gap-3",
                         button {
@@ -139,7 +141,10 @@ pub fn Employees() -> Element {
                         }
                         button {
                             class: "px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700",
-                            onclick: move |_| handle_delete(id),
+                            onclick: {
+                                let id = employee.id;
+                                move |_| handle_delete(id)
+                            },
                             "Delete"
                         }
                     }
