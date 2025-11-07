@@ -1,67 +1,47 @@
+#![allow(non_snake_case)]
 use dioxus::prelude::*;
+use dioxus_router::{Routable, Router};
 
-#[derive(Debug, Clone, Routable, PartialEq)]
-#[rustfmt::skip]
-enum Route {
-    #[layout(Navbar)]
+mod components;
+// mod db;
+
+// Import the components we want to use
+use crate::components::{footer::Footer, header::Header, home::Home};
+
+// Define the application routes
+#[derive(Routable, Clone, PartialEq, Debug)]
+pub enum Route {
     #[route("/")]
     Home {},
 }
 
-const FAVICON: Asset = asset!("/assets/favicon.ico");
-const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-
+// Main entry point for the application
 fn main() {
     dioxus::launch(App);
 }
 
+// The root App component
 #[component]
 fn App() -> Element {
     rsx! {
-        document::Link { rel: "icon", href: FAVICON }
-        // document::Link { rel: "stylesheet", href: MAIN_CSS } 
-        document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        Router::<Route> {}
-    }
-}
+        // Link to the stylesheet and favicon
+        document::Link { rel: "stylesheet", href: asset!("/assets/tailwind.css") }
+        document::Link { rel: "icon", href: asset!("/assets/favicon.ico") }
 
-#[component]
-pub fn Hero() -> Element {
-    rsx! {
+        // The main layout with a fixed header and footer
         div {
-            class: "flex flex-col items-center justify-center min-h-screen bg-gray-100 text-gray-800",
-            h1 {
-                class: "text-4xl font-bold text-blue-500 mb-4",
-                "Rust Fullstack Core"
+            class: "bg-gray-100 text-gray-800",
+
+            Header {}
+
+            main {
+                // Padding top/bottom to avoid overlap with fixed header/footer
+                // Min-height and flex to center content on short pages
+                class: "min-h-screen flex flex-col items-center justify-center pt-20 pb-20",
+                Router::<Route> {}
             }
-            p {
-                class: "text-lg text-gray-600",
-                "Clean Dioxus + TailwindCSS base ready."
-            }
+
+            Footer {}
         }
-    }
-}
-
-/// Home page
-#[component]
-fn Home() -> Element {
-    rsx! {
-        Hero {}
-    }
-}
-
-/// Shared navbar component.
-#[component]
-fn Navbar() -> Element {
-    rsx! {
-        div {
-            id: "navbar",
-            Link {
-                to: Route::Home {},
-                "Home"
-            }
-        }
-
-        Outlet::<Route> {}
     }
 }

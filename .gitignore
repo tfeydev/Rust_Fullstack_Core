@@ -11,4 +11,4 @@ Cargo.lock
 .env
 
 # Generated tailwindcss files
-assest/tailwind.css
+/assets/tailwind.css

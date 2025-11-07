@@ -9,12 +9,15 @@ title = "rust-fullstack-core"
 [web.resource]
 
 # Additional CSS style files
-style = []
+style = ["/tailwind.css"]
 
 # Additional JavaScript files
 script = []
 
 [web.resource.dev]
+
+# Additional CSS style files
+style = ["/tailwind.css"]
 
 # Javascript code file
 # serve: [dev-server] only
