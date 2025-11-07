@@ -3,16 +3,56 @@ name = "rust-fullstack-core"
 version = "0.1.0"
 authors = ["Thorsten Fey"]
 edition = "2024"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Dioxus Fullstack App with PostgreSQL and Axum backend"
+license = "MIT"
 
 [dependencies]
-dioxus = { version = "0.7.0", features = ["router", "fullstack"] }
-# sqlx = { version = "0.7.0", features = ["postgres"] }
+# --- Dioxus ---
+# Core Dioxus framework with routing and fullstack features
+dioxus = { version = "0.7.1", features = ["fullstack", "router"] }
+# Fullstack support for SSR (Server-Side Rendering)
+dioxus-fullstack = "0.7.1"
+
+# --- Web / Server ---
+# Axum for HTTP routing and API endpoints
+axum = { version = "0.8", optional = true }
+# Tokio runtime for async execution (required by Axum and SQLx)
+tokio = { version = "1", features = ["full"], optional = true }
+hyper = { version = "0.14", features = ["full"], optional = true }
+
+# --- Serialization ---
+# Serde for data serialization and deserialization
+serde = { version = "1", features = ["derive"] }
+# Serde JSON support
+serde_json = "1"
+
+# --- Database ---
+# SQLx for PostgreSQL access (with macros and Rustls runtime)
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "macros"], optional = true }
+# Dotenvy to load .env configuration files (modern alternative to dotenv)
+dotenvy = "0.15"
+
+# --- Error handling ---
+# Anyhow for ergonomic error handling
+anyhow = "1.0"
+
+# --- Optional (for Logging) ---
+# Tracing framework for structured logging and diagnostics
+tracing = "0.1"
+# Subscriber to configure and format tracing output
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
 
 [features]
 default = ["web"]
+
+# Web frontend (WASM build)
 web = ["dioxus/web"]
+
+# Desktop app (optional)
 desktop = ["dioxus/desktop"]
+
+# Mobile app (optional)
 mobile = ["dioxus/mobile"]
-server = ["dioxus/server"]
+
+# Server mode for SSR (Fullstack)
+server = ["dioxus/server", "dep:tokio", "dep:sqlx", "dep:axum", "dep:hyper"]
