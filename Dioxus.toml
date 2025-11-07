@@ -5,19 +5,16 @@
 # HTML title tag content
 title = "rust-fullstack-core"
 
-# include `assets` in web platform
+## include `assets` in web platform
 [web.resource]
 
 # Additional CSS style files
-style = ["/tailwind.css"]
+style = []
 
 # Additional JavaScript files
 script = []
 
 [web.resource.dev]
-
-# Additional CSS style files
-style = ["/tailwind.css"]
 
 # Javascript code file
 # serve: [dev-server] only
