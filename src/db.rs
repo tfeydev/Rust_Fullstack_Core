@@ -42,3 +42,85 @@ pub async fn get_employees_server() -> Result<Vec<Employee>, ServerFnError> {
 
     Ok(employees)
 }
+
+// CREATE Employee
+#[server]
+pub async fn create_employee(
+    first_name: String,
+    last_name: String,
+    email: String,
+) -> Result<Employee, ServerFnError> {
+    let database_url =
+        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
+    
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to connect to database: {}", e)))?;
+
+    // Create employee
+    let employee = sqlx::query_as::<_, Employee>(
+        "INSERT INTO employee (first_name, last_name, email) VALUES ($1, $2, $3) RETURNING *",
+    )
+    .bind(first_name)
+    .bind(last_name)
+    .bind(email)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(format!("Failed to create employee: {}", e)))?;
+
+    Ok(employee)
+}
+
+// UPDATE Employee
+#[server]
+pub async fn update_employee(
+    id: i32,
+    first_name: String,
+    last_name: String,
+    email: String,
+) -> Result<Employee, ServerFnError> {
+    let database_url =
+        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
+
+    let employee = sqlx::query_as::<_, Employee>(
+        "UPDATE employee SET first_name = $1, last_name = $2, email = $3 WHERE id = $4 RETURNING id, first_name, last_name, email"
+    )
+    .bind(&first_name)
+    .bind(&last_name)
+    .bind(&email)
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(format!("Failed to update employee: {}", e)))?;
+
+    Ok(employee)
+}
+
+// DELETE Employee
+#[server]
+pub async fn delete_employee(id: i32) -> Result<(), ServerFnError> {
+    let database_url =
+        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
+
+    sqlx::query("DELETE FROM employee WHERE id = $1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to delete employee: {}", e)))?;
+
+    Ok(())
+}
