@@ -23,7 +23,7 @@ pub async fn get_employees(pool: &PgPool) -> anyhow::Result<Vec<Employee>> {
 }
 
 // Server Function - available on both client (as RPC call) and server (as implementation)
-#[server(GetEmployees)]
+#[server]
 pub async fn get_employees_server() -> Result<Vec<Employee>, ServerFnError> {
     // Connect to database
     let database_url =

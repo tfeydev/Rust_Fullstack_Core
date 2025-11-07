@@ -1,4 +1,4 @@
-use crate::db::{Employee, get_employees_server};
+use crate::db::{get_employees_server};
 use dioxus::prelude::*;
 
 #[component]
