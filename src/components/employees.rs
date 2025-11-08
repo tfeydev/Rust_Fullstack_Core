@@ -74,9 +74,16 @@ pub fn Employees() -> Element {
                                             key: "{employee.id}",
                                             class: "hover:bg-gray-50",
                                             td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.id}" }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.first_name}" }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.last_name}" }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-600", "{employee.email}" }
+                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", 
+                                                "{employee.first_name.as_deref().unwrap_or(\"-\")}" 
+                                            }
+                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", 
+                                                "{employee.last_name.as_deref().unwrap_or(\"-\")}" 
+                                            }
+                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-600", 
+                                                "{employee.email.as_deref().unwrap_or(\"-\")}" 
+                                            }
+
                                             td {
                                                 class: "px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2",
                                                 button {
@@ -130,7 +137,9 @@ pub fn Employees() -> Element {
                 div {
                     class: "bg-white rounded-lg p-6 max-w-sm mx-4",
                     h3 { class: "text-lg font-bold mb-4", "Delete Employee?" }
-                    p { class: "text-gray-600 mb-4", "Are you sure you want to delete {employee.first_name} {employee.last_name}?" }
+                    p { class: "text-gray-600 mb-4", 
+                        "Are you sure you want to delete {employee.first_name.as_deref().unwrap_or(\"\")} {employee.last_name.as_deref().unwrap_or(\"\")}?" 
+                    }
                     p { class: "text-gray-500 text-sm mb-6", "This action cannot be undone." }
                     div {
                         class: "flex justify-end gap-3",

@@ -1,0 +1,348 @@
+# Complete Database Setup Guide - From Zero to Ready
+
+This guide will help you set up the complete database for the Employee Directory application from scratch.
+
+## Prerequisites
+
+- PostgreSQL installed (version 12 or higher)
+- Access to PostgreSQL command line (`psql`) or a GUI tool like DBeaver
+
+## Step 1: Create the Database
+
+```bash
+# Connect to PostgreSQL as superuser
+psql -U postgres
+
+# Create the database
+CREATE DATABASE employee_directory;
+
+# Connect to the new database
+\c employee_directory
+```
+
+Or using command line directly:
+```bash
+createdb -U postgres employee_directory
+```
+
+## Step 2: Create Tables
+
+### 2.1 Create `app_role` Table
+
+```sql
+CREATE TABLE app_role (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+```
+
+### 2.2 Create `employee` Table
+
+```sql
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### 2.3 Create `users` Table
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INTEGER NOT NULL,
+    employee_id INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) 
+        REFERENCES app_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_users_employee FOREIGN KEY (employee_id) 
+        REFERENCES employee(id) ON DELETE SET NULL
+);
+```
+
+### 2.4 Create Indexes
+
+```sql
+-- Index for faster user lookups by email
+CREATE INDEX idx_users_email ON users(email);
+
+-- Index for faster lookups by employee_id
+CREATE INDEX idx_users_employee_id ON users(employee_id);
+
+-- Index for faster lookups by role
+CREATE INDEX idx_users_role_id ON users(role_id);
+```
+
+## Step 3: Insert Roles
+
+```sql
+INSERT INTO app_role (id, name) VALUES
+    (1, 'ROLE_ADMIN'),
+    (2, 'ROLE_MANAGER'),
+    (3, 'ROLE_HR'),
+    (4, 'ROLE_IT'),
+    (5, 'ROLE_EMPLOYEE');
+```
+
+## Step 4: Insert Sample employee
+
+```sql
+INSERT INTO employee (first_name, last_name, email) VALUES
+    ('Leslie', 'Andrews', 'leslie@luv2code.com'),
+    ('Emma', 'Baumgarten', 'emma@luv2code.com'),
+    ('Avani', 'Gupta', 'avani@luv2code.com'),
+    ('Yuri', 'Petrov', 'yuri@luv2code.com'),
+    ('Juan', 'Vega', 'juan@luv2code.com');
+```
+
+## Step 5: Insert Test Users
+
+⚠️ **Default password for all accounts: `password123`**
+
+```sql
+-- 1. System Admin (no employee link)
+INSERT INTO users (email, password_hash, role_id, employee_id, created_at)
+VALUES (
+    'admin@company.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS',
+    1, -- ROLE_ADMIN
+    NULL,
+    NOW()
+);
+
+-- 2. HR User - Leslie Andrews
+INSERT INTO users (email, password_hash, role_id, employee_id, created_at)
+VALUES (
+    'leslie@luv2code.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS',
+    3, -- ROLE_HR
+    1,
+    NOW()
+);
+
+-- 3. IT User - Emma Baumgarten
+INSERT INTO users (email, password_hash, role_id, employee_id, created_at)
+VALUES (
+    'emma@luv2code.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS',
+    4, -- ROLE_IT
+    2,
+    NOW()
+);
+
+-- 4. Employee User - Avani Gupta
+INSERT INTO users (email, password_hash, role_id, employee_id, created_at)
+VALUES (
+    'avani@luv2code.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS',
+    5, -- ROLE_EMPLOYEE
+    3,
+    NOW()
+);
+```
+
+## Step 6: Verify Setup
+
+### 6.1 Check All Tables
+
+```sql
+-- List all tables
+\dt
+
+-- Should show:
+-- app_role
+-- employee
+-- users
+```
+
+### 6.2 Verify Roles
+
+```sql
+SELECT * FROM app_role ORDER BY id;
+```
+
+Expected output:
+```
+ id |      name      
+----+----------------
+  1 | ROLE_ADMIN
+  2 | ROLE_MANAGER
+  3 | ROLE_HR
+  4 | ROLE_IT
+  5 | ROLE_EMPLOYEE
+```
+
+### 6.3 Verify employee
+
+```sql
+SELECT id, first_name, last_name, email FROM employee ORDER BY id;
+```
+
+### 6.4 Verify Users with Roles
+
+```sql
+SELECT 
+    u.id,
+    u.email,
+    r.name as role,
+    e.first_name || ' ' || e.last_name as employee_name
+FROM users u
+JOIN app_role r ON u.role_id = r.id
+LEFT JOIN employee e ON u.employee_id = e.id
+ORDER BY u.id;
+```
+
+Expected output:
+```
+ id |         email          |      role      | employee_name  
+----+------------------------+----------------+----------------
+  1 | admin@company.com      | ROLE_ADMIN     | 
+  2 | leslie@luv2code.com    | ROLE_HR        | Leslie Andrews
+  3 | emma@luv2code.com      | ROLE_IT        | Emma Baumgarten
+  4 | avani@luv2code.com     | ROLE_EMPLOYEE  | Avani Gupta
+```
+
+## Step 7: Test User Accounts
+
+| Email | Password | Role | Access |
+|-------|----------|------|--------|
+| `admin@company.com` | `password123` | ROLE_ADMIN | Full system access |
+| `leslie@luv2code.com` | `password123` | ROLE_HR | Manage employee |
+| `emma@luv2code.com` | `password123` | ROLE_IT | Manage user accounts |
+| `avani@luv2code.com` | `password123` | ROLE_EMPLOYEE | View own profile |
+
+## Complete Setup Script
+
+If you want to run everything at once, create a file `setup_database.sql`:
+
+```sql
+-- Create database (run this separately as postgres user)
+-- CREATE DATABASE employee_directory;
+
+-- Then run this after connecting to employee_directory:
+
+-- 1. Create Tables
+CREATE TABLE app_role (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INTEGER NOT NULL,
+    employee_id INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) 
+        REFERENCES app_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_users_employee FOREIGN KEY (employee_id) 
+        REFERENCES employee(id) ON DELETE SET NULL
+);
+
+-- 2. Create Indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_employee_id ON users(employee_id);
+CREATE INDEX idx_users_role_id ON users(role_id);
+
+-- 3. Insert Roles
+INSERT INTO app_role (id, name) VALUES
+    (1, 'ROLE_ADMIN'),
+    (2, 'ROLE_MANAGER'),
+    (3, 'ROLE_HR'),
+    (4, 'ROLE_IT'),
+    (5, 'ROLE_EMPLOYEE');
+
+-- 4. Insert Sample employee
+INSERT INTO employee (first_name, last_name, email) VALUES
+    ('Leslie', 'Andrews', 'leslie@luv2code.com'),
+    ('Emma', 'Baumgarten', 'emma@luv2code.com'),
+    ('Avani', 'Gupta', 'avani@luv2code.com'),
+    ('Yuri', 'Petrov', 'yuri@luv2code.com'),
+    ('Juan', 'Vega', 'juan@luv2code.com');
+
+-- 5. Insert Test Users (password: password123)
+INSERT INTO users (email, password_hash, role_id, employee_id, created_at) VALUES
+    ('admin@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS', 1, NULL, NOW()),
+    ('leslie@luv2code.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS', 3, 1, NOW()),
+    ('emma@luv2code.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS', 4, 2, NOW()),
+    ('avani@luv2code.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5BI6YOO2/R7kS', 5, 3, NOW());
+```
+
+Run it with:
+```bash
+psql -U postgres -d employee_directory -f migrations/setup_database.sql
+```
+
+## Environment Variables
+
+Create or update your `.env` file:
+
+```env
+DATABASE_URL=postgres://postgres:your_password@localhost/employee_directory
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRATION=86400  # 24 hours in seconds
+```
+
+## Troubleshooting
+
+### Error: "database already exists"
+```sql
+DROP DATABASE IF EXISTS employee_directory;
+CREATE DATABASE employee_directory;
+```
+
+### Error: "relation already exists"
+```sql
+-- Drop tables in reverse order (because of foreign keys)
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS employee CASCADE;
+DROP TABLE IF EXISTS app_role CASCADE;
+
+-- Then re-run the setup script
+```
+
+### Check PostgreSQL is running
+```bash
+# Linux
+sudo systemctl status postgresql
+
+# macOS
+brew services list
+
+# Check connection
+psql -U postgres -l
+```
+
+## Next Steps
+
+After completing this setup:
+
+1. ✅ Database is ready
+2. ✅ Test users are created
+3. ⏭️ Configure Rust backend with DATABASE_URL
+4. ⏭️ Implement JWT authentication
+5. ⏭️ Build login page
+
+---
+
+**📝 Note:** Remember to change all default passwords in production!

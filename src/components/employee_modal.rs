@@ -15,17 +15,17 @@ pub fn EmployeeModal(
 ) -> Element {
     let mut first_name = use_signal(|| match &mode {
         ModalMode::Create => String::new(),
-        ModalMode::Edit(emp) => emp.first_name.clone(),
+        ModalMode::Edit(emp) => emp.first_name.clone().unwrap_or_default(),
     });
 
     let mut last_name = use_signal(|| match &mode {
         ModalMode::Create => String::new(),
-        ModalMode::Edit(emp) => emp.last_name.clone(),
+        ModalMode::Edit(emp) => emp.last_name.clone().unwrap_or_default(),
     });
 
     let mut email = use_signal(|| match &mode {
         ModalMode::Create => String::new(),
-        ModalMode::Edit(emp) => emp.email.clone(),
+        ModalMode::Edit(emp) => emp.email.clone().unwrap_or_default(),
     });
 
     let mut is_saving = use_signal(|| false);

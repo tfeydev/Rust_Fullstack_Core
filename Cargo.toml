@@ -28,9 +28,18 @@ serde_json = "1"
 
 # --- Database ---
 # SQLx for PostgreSQL access (with macros and Rustls runtime)
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "macros"], optional = true }
+# sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "macros"], optional = true }
+# # SeaORM for async PostgreSQL ORM with migrations
+sea-orm = { version = "1.1.5", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"], optional = true }
+
 # Dotenvy to load .env configuration files (modern alternative to dotenv)
 dotenvy = "0.15"
+
+# --- Authentication ---
+# JWT encoding/decoding for authentication tokens
+jsonwebtoken = { version = "9", optional = true, default-features = false }
+# Bcrypt for password hashing
+bcrypt = { version = "0.16", optional = true }
 
 # --- Error handling ---
 # Anyhow for ergonomic error handling
@@ -41,6 +50,12 @@ anyhow = "1.0"
 tracing = "0.1"
 # Subscriber to configure and format tracing output
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
+
+getrandom = { version = "0.2", features = ["js"] }
+
+[dev-dependencies]
+# SeaORM CLI for entity generation and migrations
+sea-orm-cli = { version = "1.1.5" }
 
 [features]
 default = ["web"]
@@ -55,4 +70,5 @@ desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
 
 # Server mode for SSR (Fullstack)
-server = ["dioxus/server", "dep:tokio", "dep:sqlx", "dep:axum", "dep:hyper"]
+# server = ["dioxus/server", "dep:tokio", "dep:sea-orm", "dep:axum", "dep:hyper"]
+server = ["dioxus/server", "dep:tokio", "dep:sea-orm", "dep:axum", "dep:hyper", "dep:jsonwebtoken", "dep:bcrypt"]

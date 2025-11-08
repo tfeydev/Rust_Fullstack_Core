@@ -1,44 +1,57 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
-// Employee struct is needed on both client and server
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "server", derive(sqlx::FromRow))]
+// Re-export entities for easier access (server-only)
+#[cfg(feature = "server")]
+pub use crate::entities::employee;
+
+#[cfg(feature = "server")]
+pub use crate::entities::prelude::{Employee as EmployeeEntity, Users as UsersEntity, AppRole as AppRoleEntity};
+
+// Employee struct - but we need a client-safe version!
+// Since employee::Model only exists on server, we need to define it for both
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Employee {
     pub id: i32,
-    pub first_name: String,
-    pub last_name: String,
-    pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: Option<String>,
+}
+
+// Server-only: Convert from SeaORM Model to our Employee struct
+#[cfg(feature = "server")]
+impl From<employee::Model> for Employee {
+    fn from(model: employee::Model) -> Self {
+        Employee {
+            id: model.id,
+            first_name: model.first_name,
+            last_name: model.last_name,
+            email: model.email,
+        }
+    }
 }
 
 // Server-only database functions
 #[cfg(feature = "server")]
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sea_orm::*;
 
 #[cfg(feature = "server")]
-pub async fn get_employees(pool: &PgPool) -> anyhow::Result<Vec<Employee>> {
-    let query = "SELECT id, first_name, last_name, email FROM employee";
-    let employees = sqlx::query_as::<_, Employee>(query).fetch_all(pool).await?;
-    Ok(employees)
-}
+use crate::db_connection::get_db;
 
-// Server Function - available on both client (as RPC call) and server (as implementation)
+// Server Function - Get all employees
 #[server]
 pub async fn get_employees_server() -> Result<Vec<Employee>, ServerFnError> {
-    // Connect to database
-    let database_url =
-        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
-
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let db = get_db()
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to connect to database: {}", e)))?;
 
-    // Get employees
-    let employees = get_employees(&pool)
+    let employees = EmployeeEntity::find()
+        .all(&db)
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to fetch employees: {}", e)))?;
+
+    // Convert SeaORM models to our Employee struct
+    let employees: Vec<Employee> = employees.into_iter().map(Into::into).collect();
 
     Ok(employees)
 }
@@ -50,27 +63,23 @@ pub async fn create_employee(
     last_name: String,
     email: String,
 ) -> Result<Employee, ServerFnError> {
-    let database_url =
-        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
-    
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let db = get_db()
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to connect to database: {}", e)))?;
 
-    // Create employee
-    let employee = sqlx::query_as::<_, Employee>(
-        "INSERT INTO employee (first_name, last_name, email) VALUES ($1, $2, $3) RETURNING *",
-    )
-    .bind(first_name)
-    .bind(last_name)
-    .bind(email)
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(format!("Failed to create employee: {}", e)))?;
+    let employee = employee::ActiveModel {
+        first_name: Set(Some(first_name)),
+        last_name: Set(Some(last_name)),
+        email: Set(Some(email)),
+        ..Default::default()
+    };
 
-    Ok(employee)
+    let result = employee
+        .insert(&db)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to create employee: {}", e)))?;
+
+    Ok(result.into())
 }
 
 // UPDATE Employee
@@ -81,44 +90,41 @@ pub async fn update_employee(
     last_name: String,
     email: String,
 ) -> Result<Employee, ServerFnError> {
-    let database_url =
-        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
-
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let db = get_db()
         .await
         .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
 
-    let employee = sqlx::query_as::<_, Employee>(
-        "UPDATE employee SET first_name = $1, last_name = $2, email = $3 WHERE id = $4 RETURNING id, first_name, last_name, email"
-    )
-    .bind(&first_name)
-    .bind(&last_name)
-    .bind(&email)
-    .bind(id)
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(format!("Failed to update employee: {}", e)))?;
+    // Find existing employee
+    let employee = EmployeeEntity::find_by_id(id)
+        .one(&db)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to find employee: {}", e)))?
+        .ok_or_else(|| ServerFnError::new("Employee not found"))?;
 
-    Ok(employee)
+    // Convert to ActiveModel for updating
+    let mut employee: employee::ActiveModel = employee.into();
+    
+    employee.first_name = Set(Some(first_name));
+    employee.last_name = Set(Some(last_name));
+    employee.email = Set(Some(email));
+
+    let updated = employee
+        .update(&db)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Failed to update employee: {}", e)))?;
+
+    Ok(updated.into())
 }
 
 // DELETE Employee
 #[server]
 pub async fn delete_employee(id: i32) -> Result<(), ServerFnError> {
-    let database_url =
-        std::env::var("DATABASE_URL").map_err(|_| ServerFnError::new("DATABASE_URL not set"))?;
-
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let db = get_db()
         .await
         .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
 
-    sqlx::query("DELETE FROM employee WHERE id = $1")
-        .bind(id)
-        .execute(&pool)
+    EmployeeEntity::delete_by_id(id)
+        .exec(&db)
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to delete employee: {}", e)))?;
 
