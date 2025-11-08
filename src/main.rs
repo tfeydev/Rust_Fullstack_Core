@@ -1,11 +1,10 @@
-// use dioxus::prelude::*;
-
 mod app;
 mod components;
 
 mod db;
 
 mod entities;
+
 #[cfg(feature = "server")]
 mod db_connection;
 
