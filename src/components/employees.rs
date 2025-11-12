@@ -21,7 +21,7 @@ pub fn Employees() -> Element {
         div {
             class: "container mx-auto px-4 py-8",
 
-            // Header with Add Button
+            // Header
             div {
                 class: "flex justify-between items-center mb-6",
                 h1 {
@@ -50,69 +50,60 @@ pub fn Employees() -> Element {
                         "Error loading employees: {err}"
                     }
                 },
-                Some(Ok(employee_list)) => {
-
-                    rsx! {
-                        div {
-                            class: "bg-white shadow-md rounded-lg overflow-hidden",
-                            table {
-                                class: "min-w-full divide-y divide-gray-200",
-                                thead {
-                                    class: "bg-gray-50",
-                                    tr {
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "ID" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "First Name" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Last Name" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Email" }
-                                        th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Actions" }
-                                    }
+                Some(Ok(employee_list)) => rsx! {
+                    div {
+                        class: "bg-white shadow-md rounded-lg overflow-hidden",
+                        table {
+                            class: "min-w-full divide-y divide-gray-200",
+                            thead {
+                                class: "bg-gray-50",
+                                tr {
+                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "ID" }
+                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "First Name" }
+                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Last Name" }
+                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Email" }
+                                    th { class: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", "Actions" }
                                 }
-                                tbody {
-                                    class: "bg-white divide-y divide-gray-200",
-                                    for employee in employee_list.iter() {
-                                        tr {
-                                            key: "{employee.id}",
-                                            class: "hover:bg-gray-50",
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.id}" }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", 
-                                                "{employee.first_name.as_deref().unwrap_or(\"-\")}" 
-                                            }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", 
-                                                "{employee.last_name.as_deref().unwrap_or(\"-\")}" 
-                                            }
-                                            td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-600", 
-                                                "{employee.email.as_deref().unwrap_or(\"-\")}" 
-                                            }
+                            }
+                            tbody {
+                                class: "bg-white divide-y divide-gray-200",
+                                for employee in employee_list.iter() {
+                                    tr {
+                                        key: "{employee.id}",
+                                        class: "hover:bg-gray-50",
+                                        td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.id}" }
+                                        td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.first_name.as_deref().unwrap_or(\"-\")}" }
+                                        td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", "{employee.last_name.as_deref().unwrap_or(\"-\")}" }
+                                        td { class: "px-6 py-4 whitespace-nowrap text-sm text-gray-600", "{employee.email.as_deref().unwrap_or(\"-\")}" }
 
-                                            td {
-                                                class: "px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2",
-                                                button {
-                                                    class: "text-blue-600 hover:text-blue-900",
-                                                    onclick: {
-                                                        let employee = employee.clone();
-                                                        move |_| modal_state.set(Some(ModalMode::Edit(employee.clone())))
-                                                    },
-                                                    "✏️ Edit"
-                                                }
-                                                button {
-                                                    class: "text-red-600 hover:text-red-900",
-                                                    onclick: {
-                                                        let emp = employee.clone();
-                                                        move |_| delete_confirm.set(Some(emp.clone()))
-                                                    },
-                                                    "🗑️ Delete"
-                                                }
+                                        td {
+                                            class: "px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2",
+                                            button {
+                                                class: "text-blue-600 hover:text-blue-900",
+                                                onclick: {
+                                                    let emp = employee.clone();
+                                                    move |_| modal_state.set(Some(ModalMode::Edit(emp.clone())))
+                                                },
+                                                "✏️ Edit"
+                                            }
+                                            button {
+                                                class: "text-red-600 hover:text-red-900",
+                                                onclick: {
+                                                    let emp = employee.clone();
+                                                    move |_| delete_confirm.set(Some(emp.clone()))
+                                                },
+                                                "🗑️ Delete"
                                             }
                                         }
                                     }
                                 }
                             }
+                        }
 
-                            if employee_list.is_empty() {
-                                div {
-                                    class: "text-center py-8 text-gray-500",
-                                    "No employees found."
-                                }
+                        if employee_list.is_empty() {
+                            div {
+                                class: "text-center py-8 text-gray-500",
+                                "No employees found."
                             }
                         }
                     }
@@ -137,8 +128,8 @@ pub fn Employees() -> Element {
                 div {
                     class: "bg-white rounded-lg p-6 max-w-sm mx-4",
                     h3 { class: "text-lg font-bold mb-4", "Delete Employee?" }
-                    p { class: "text-gray-600 mb-4", 
-                        "Are you sure you want to delete {employee.first_name.as_deref().unwrap_or(\"\")} {employee.last_name.as_deref().unwrap_or(\"\")}?" 
+                    p { class: "text-gray-600 mb-4",
+                        "Are you sure you want to delete {employee.first_name.as_deref().unwrap_or(\"\")} {employee.last_name.as_deref().unwrap_or(\"\")}?"
                     }
                     p { class: "text-gray-500 text-sm mb-6", "This action cannot be undone." }
                     div {
