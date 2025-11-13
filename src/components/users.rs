@@ -13,7 +13,7 @@ pub fn Users() -> Element {
 
             // Header
             h1 {
-                class: "text-3xl font-bold text-gray-800 mb-6",
+                class: "text-3xl font-bold text-blue-500 mb-6",
                 "Users"
             }
 

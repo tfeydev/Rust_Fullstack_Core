@@ -25,7 +25,7 @@ pub fn Employees() -> Element {
             div {
                 class: "flex justify-between items-center mb-6",
                 h1 {
-                    class: "text-3xl font-bold text-gray-800",
+                    class: "text-3xl font-bold text-blue-500",
                     "Employee Directory"
                 }
                 button {
