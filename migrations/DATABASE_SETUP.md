@@ -419,4 +419,153 @@ WHEN (NEW.email IS DISTINCT FROM OLD.email)
 EXECUTE FUNCTION sync_employee_email_to_users();
 
 ```
+
+
+### Trigger keine doppelten emails
+```sql
+CREATE OR REPLACE FUNCTION prevent_duplicate_user_emails()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Prüfen, ob es eine andere User-ID mit gleicher Email gibt
+    IF EXISTS (
+        SELECT 1 FROM users
+        WHERE email = NEW.email
+          AND id <> COALESCE(NEW.id, -1)
+    ) THEN
+        RAISE EXCEPTION 'Email "%" exists already for another user', NEW.email;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS trg_prevent_duplicate_user_emails
+ON users;
+
+CREATE TRIGGER trg_prevent_duplicate_user_emails
+BEFORE INSERT OR UPDATE OF email ON users
+FOR EACH ROW
+EXECUTE FUNCTION prevent_duplicate_user_emails();
+```
+
+### another trigger
+```sql
+-- Employee -> Users (guarded)
+CREATE OR REPLACE FUNCTION public.sync_employee_email_to_users()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Prevent recursion if guard is set
+    IF coalesce(current_setting('app.sync_guard', true), '0') = '1' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Set guard for this transaction
+    PERFORM set_config('app.sync_guard', '1', true);
+
+    -- Update linked user(s)
+    UPDATE public.users
+    SET email = NEW.email
+    WHERE employee_id = NEW.id
+      AND (email IS DISTINCT FROM NEW.email);
+
+    RETURN NEW;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS trg_sync_employee_email ON public.employee;
+
+CREATE TRIGGER trg_sync_employee_email
+AFTER UPDATE OF email ON public.employee
+FOR EACH ROW
+WHEN (NEW.email IS DISTINCT FROM OLD.email)
+EXECUTE FUNCTION public.sync_employee_email_to_users();
+
+
+-- Users -> Employee (guarded)
+CREATE OR REPLACE FUNCTION public.sync_user_email_to_employee()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Prevent recursion if guard is set
+    IF coalesce(current_setting('app.sync_guard', true), '0') = '1' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Only act if this user is linked to an employee
+    IF NEW.employee_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Set guard for this transaction so employee trigger won't loop back
+    PERFORM set_config('app.sync_guard', '1', true);
+
+    -- Update employee email only if different
+    UPDATE public.employee
+    SET email = NEW.email
+    WHERE id = NEW.employee_id
+      AND (email IS DISTINCT FROM NEW.email);
+
+    RETURN NEW;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS trg_sync_user_email ON public.users;
+
+CREATE TRIGGER trg_sync_user_email
+AFTER UPDATE OF email ON public.users
+FOR EACH ROW
+WHEN (NEW.email IS DISTINCT FROM OLD.email)
+EXECUTE FUNCTION public.sync_user_email_to_employee();
+
+
+CREATE OR REPLACE FUNCTION public.prevent_duplicate_user_emails()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM public.users
+        WHERE email = NEW.email
+          AND id <> COALESCE(NEW.id, -1)
+    ) THEN
+        RAISE EXCEPTION 'EMAIL_EXISTS';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_duplicate_user_emails ON public.users;
+
+CREATE TRIGGER trg_prevent_duplicate_user_emails
+BEFORE INSERT OR UPDATE OF email ON public.users
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_duplicate_user_emails();
+
+
+-- Testing
+BEGIN;
+
+-- check before
+SELECT id, email FROM public.employee WHERE id = 1;
+SELECT id, email, employee_id FROM public.users WHERE employee_id = 1;
+
+-- update users (should propagate to employee)
+UPDATE public.users SET email='sync-test-user@example.com' WHERE id = <user-id>;
+
+-- check after within same transaction
+SELECT id, email FROM public.employee WHERE id = <employee-id>;
+SELECT id, email FROM public.users WHERE id = <user-id>;
+
+ROLLBACK;
+
+```
+
 **📝 Note:** Remember to change all default passwords in production!
