@@ -1,5 +1,12 @@
 #![allow(non_snake_case)]
-use crate::components::{employees::Employees, footer::Footer, header::Header, home::Home, users::Users};
+use crate::components::{
+    employees::Employees, 
+    footer::Footer, 
+    header::Header, 
+    home::Home, 
+    users::Users,
+    login::Login,
+};
 use dioxus::prelude::*;
 use dioxus_router::{Routable, Router};
 
@@ -15,6 +22,9 @@ pub enum Route {
     
     #[route("/users")]
     Users {},
+    
+    #[route("/login")]
+    Login {},
 
 }
 
