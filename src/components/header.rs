@@ -24,6 +24,12 @@ pub fn Header() -> Element {
                         class: "hover:text-blue-200",
                         "Employees"
                     }
+                    Link {
+                        to: "/users",
+                        class: "text-white hover:text-gray-200",
+                        "Users"
+                    }
+
                 }
             }
         }

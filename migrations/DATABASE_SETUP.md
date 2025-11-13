@@ -334,6 +334,25 @@ psql -U postgres -l
 ```
 
 ## Next Steps
+```sql
+CREATE OR REPLACE VIEW users_extended AS
+SELECT 
+    u.id AS user_id,
+    u.email,
+    r.name AS role_name,
+    u.employee_id,
+    CASE
+        WHEN e.id IS NULL THEN NULL
+        ELSE CONCAT(e.first_name, ' ', e.last_name)
+    END AS employee_name
+FROM users u
+JOIN app_role r ON u.role_id = r.id
+LEFT JOIN employee e ON u.employee_id = e.id
+ORDER BY u.id;
+
+
+SELECT * FROM users_extended;
+```
 
 After completing this setup:
 
@@ -345,4 +364,59 @@ After completing this setup:
 
 ---
 
+
+### 
+```sql
+-- Vollzugriff auf bestehende Tabellen und Views
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO thor;
+
+-- Vollzugriff auf bestehende Sequenzen (Auto-Increment IDs)
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO thor;
+
+-- Vollzugriff auf bestehende Funktionen
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO thor;
+
+-- Zukünftige Tabellen & Views automatisch freigeben
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+GRANT ALL PRIVILEGES ON TABLES TO thor;
+
+-- Zukünftige Sequenzen automatisch freigeben
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+GRANT ALL PRIVILEGES ON SEQUENCES TO thor;
+
+-- Zukünftige Funktionen automatisch freigeben
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+GRANT ALL PRIVILEGES ON FUNCTIONS TO thor;
+
+-- Zugriff auf das public-Schema selbst (für CREATE VIEW etc.)
+GRANT ALL PRIVILEGES ON SCHEMA public TO thor;
+
+```
+
+
+
+### Trigger
+```sql
+CREATE OR REPLACE FUNCTION sync_employee_email_to_users()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE users
+    SET email = NEW.email
+    WHERE employee_id = NEW.id;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_employee_email ON employee;
+
+CREATE TRIGGER trg_sync_employee_email
+AFTER UPDATE OF email ON employee
+FOR EACH ROW
+WHEN (NEW.email IS DISTINCT FROM OLD.email)
+EXECUTE FUNCTION sync_employee_email_to_users();
+
+```
 **📝 Note:** Remember to change all default passwords in production!

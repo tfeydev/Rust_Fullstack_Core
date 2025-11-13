@@ -1,11 +1,28 @@
+// src/db.rs
+// Unified DB API: Employees + UsersExtended (view)
+// Code & comments in English.
+
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
+//
+// Server-only imports
+//
 #[cfg(feature = "server")]
-pub use crate::entities::prelude::{Employee as EmployeeEntity, Users as UsersEntity, AppRole as AppRoleEntity};
+use sea_orm::*;
+
+#[cfg(feature = "server")]
+use crate::db_connection::get_db;
+
+#[cfg(feature = "server")]
+pub use crate::entities::prelude::Employee as EmployeeEntity;
+
 #[cfg(feature = "server")]
 pub use crate::entities::employee;
 
+//
+// -------------------- EMPLOYEE DTO --------------------
+//
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Employee {
     pub id: i32,
@@ -15,34 +32,32 @@ pub struct Employee {
 }
 
 #[cfg(feature = "server")]
-use sea_orm::*;
-#[cfg(feature = "server")]
-use crate::db_connection::get_db;
-
-#[cfg(feature = "server")]
 impl From<employee::Model> for Employee {
-    fn from(model: employee::Model) -> Self {
-        Employee {
-            id: model.id,
-            first_name: model.first_name,
-            last_name: model.last_name,
-            email: model.email,
+    fn from(m: employee::Model) -> Self {
+        Self {
+            id: m.id,
+            first_name: m.first_name,
+            last_name: m.last_name,
+            email: m.email,
         }
     }
 }
 
+//
+// -------------------- EMPLOYEE CRUD --------------------
+//
 #[server]
 pub async fn get_employees_server() -> Result<Vec<Employee>, ServerFnError> {
     let db = get_db()
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to connect to database: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("DB connection failed: {}", e)))?;
 
-    let employees = EmployeeEntity::find()
+    let models = EmployeeEntity::find()
         .all(&db)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to fetch employees: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Query failed: {}", e)))?;
 
-    Ok(employees.into_iter().map(Into::into).collect())
+    Ok(models.into_iter().map(Into::into).collect())
 }
 
 #[server]
@@ -53,21 +68,21 @@ pub async fn create_employee(
 ) -> Result<Employee, ServerFnError> {
     let db = get_db()
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to connect to database: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("DB connection failed: {}", e)))?;
 
-    let employee = employee::ActiveModel {
+    let new = employee::ActiveModel {
         id: NotSet,
         first_name: Set(Some(first_name)),
         last_name: Set(Some(last_name)),
         email: Set(Some(email)),
     };
 
-    let result = employee
+    let res = new
         .insert(&db)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to create employee: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Insert failed: {}", e)))?;
 
-    Ok(result.into())
+    Ok(res.into())
 }
 
 #[server]
@@ -79,23 +94,23 @@ pub async fn update_employee(
 ) -> Result<Employee, ServerFnError> {
     let db = get_db()
         .await
-        .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("DB connection failed: {}", e)))?;
 
-    let employee = EmployeeEntity::find_by_id(id)
+    let existing = EmployeeEntity::find_by_id(id)
         .one(&db)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to find employee: {}", e)))?
+        .map_err(|e| ServerFnError::new(format!("Query failed: {}", e)))?
         .ok_or_else(|| ServerFnError::new("Employee not found"))?;
 
-    let mut employee: employee::ActiveModel = employee.into();
-    employee.first_name = Set(Some(first_name));
-    employee.last_name = Set(Some(last_name));
-    employee.email = Set(Some(email));
+    let mut model: employee::ActiveModel = existing.into();
+    model.first_name = Set(Some(first_name));
+    model.last_name = Set(Some(last_name));
+    model.email = Set(Some(email));
 
-    let updated = employee
+    let updated = model
         .update(&db)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to update employee: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Update failed: {}", e)))?;
 
     Ok(updated.into())
 }
@@ -104,12 +119,88 @@ pub async fn update_employee(
 pub async fn delete_employee(id: i32) -> Result<(), ServerFnError> {
     let db = get_db()
         .await
-        .map_err(|e| ServerFnError::new(format!("Database connection failed: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("DB connection failed: {}", e)))?;
 
     EmployeeEntity::delete_by_id(id)
         .exec(&db)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to delete employee: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Delete failed: {}", e)))?;
 
     Ok(())
+}
+
+//
+// -------------------- USERS_EXTENDED VIEW (FROM DATABASE VIEW) --------------------
+//
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UserExtended {
+    pub user_id: i32,
+    pub email: String,
+    pub role_name: String,
+    pub employee_id: Option<i32>,
+    pub employee_name: Option<String>,
+}
+
+#[server]
+pub async fn get_users_extended_server() -> Result<Vec<UserExtended>, ServerFnError> {
+    // We use sea-orm's FromQueryResult + Statement::from_sql_and_values to read the view.
+    // This avoids using QueryResult/try_get and is fully compatible with Dioxus server macro.
+
+    #[cfg(feature = "server")]
+    {
+        use sea_orm::FromQueryResult;
+
+        #[derive(Debug, FromQueryResult)]
+        struct Row {
+            user_id: i32,
+            email: String,
+            role_name: String,
+            employee_id: Option<i32>,
+            employee_name: Option<String>,
+        }
+
+        let db = get_db()
+            .await
+            .map_err(|e| ServerFnError::new(format!("DB connection failed: {}", e)))?;
+
+        let stmt = Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Postgres,
+            r#"
+            SELECT
+                user_id,
+                email,
+                role_name,
+                employee_id,
+                employee_name
+            FROM users_extended
+            ORDER BY user_id
+            "#,
+            [], // no params
+        );
+
+        let rows: Vec<Row> = Row::find_by_statement(stmt)
+            .all(&db)
+            .await
+            .map_err(|e| ServerFnError::new(format!("Query failed: {}", e)))?;
+
+        let mapped = rows
+            .into_iter()
+            .map(|r| UserExtended {
+                user_id: r.user_id,
+                email: r.email,
+                role_name: r.role_name,
+                employee_id: r.employee_id,
+                employee_name: r.employee_name,
+            })
+            .collect();
+
+        Ok(mapped)
+    }
+
+    // If compiled without server feature (shouldn't happen in server context),
+    // return an empty vector.
+    #[cfg(not(feature = "server"))]
+    {
+        Ok(Vec::new())
+    }
 }

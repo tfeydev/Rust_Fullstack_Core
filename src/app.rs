@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use crate::components::{employees::Employees, footer::Footer, header::Header, home::Home};
+use crate::components::{employees::Employees, footer::Footer, header::Header, home::Home, users::Users};
 use dioxus::prelude::*;
 use dioxus_router::{Routable, Router};
 
@@ -7,9 +7,15 @@ use dioxus_router::{Routable, Router};
 pub enum Route {
     #[layout(Layout)]
     #[route("/")]
+    
     Home {},
+    
     #[route("/employees")]
     Employees {},
+    
+    #[route("/users")]
+    Users {},
+
 }
 
 #[component]

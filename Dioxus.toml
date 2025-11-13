@@ -1,21 +1,13 @@
 [application]
+name = "rust-fullstack-core"
 
 [web.app]
-
-# HTML title tag content
 title = "rust-fullstack-core"
 
-## include `assets` in web platform
-[web.resource]
+[web.app.dev]
+port = 8080
 
-# Additional CSS style files
-style = []
-
-# Additional JavaScript files
-script = []
+[web.watcher]
 
 [web.resource.dev]
-
-# Javascript code file
-# serve: [dev-server] only
 script = []
