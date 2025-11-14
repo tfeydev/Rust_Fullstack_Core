@@ -1,4 +1,4 @@
-use crate::db::{Employee, create_employee, update_employee};
+use crate::server::db::{Employee, create_employee, update_employee};
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq)]

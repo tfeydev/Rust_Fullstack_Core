@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::db::get_users_extended_server;
+use crate::server::db::get_users_extended_server;
 
 #[component]
 pub fn Users() -> Element {

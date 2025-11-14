@@ -9,6 +9,7 @@ use crate::components::{
 };
 use dioxus::prelude::*;
 use dioxus_router::{Routable, Router};
+use crate::server::state::AuthState;
 
 #[derive(Routable, Clone)]
 pub enum Route {
@@ -30,6 +31,10 @@ pub enum Route {
 
 #[component]
 pub fn App() -> Element {
+    let logged_in = use_signal(|| false);
+    
+    use_context_provider(|| AuthState { logged_in });
+    
     rsx! {
         document::Link { rel: "stylesheet", href: asset!("assets/tailwind.css") }
         document::Link { rel: "icon", href: asset!("assets/favicon.ico") }

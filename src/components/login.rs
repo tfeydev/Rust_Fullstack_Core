@@ -1,10 +1,14 @@
 use dioxus::prelude::*;
 
+use crate::server::state::AuthState;
+
 #[component]
 pub fn Login() -> Element {
     // Signals for form fields
     let mut email = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
+    
+    let _auth = use_context::<AuthState>();
 
     rsx! {
         div { 

@@ -1,5 +1,5 @@
 use crate::components::employee_modal::{EmployeeModal, ModalMode};
-use crate::db::{Employee, delete_employee, get_employees_server};
+use crate::server::db::{Employee, delete_employee, get_employees_server};
 use dioxus::prelude::*;
 
 #[component]

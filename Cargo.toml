@@ -8,67 +8,54 @@ license = "MIT"
 
 [dependencies]
 # --- Dioxus ---
-# Core Dioxus framework with routing and fullstack features
 dioxus = { version = "0.7.1", features = ["fullstack", "router"] }
-# Fullstack support for SSR (Server-Side Rendering)
-dioxus-fullstack = "0.7.1"
-
+# In der [dependencies] Sektion:
+sea-orm = { version = "1.1.5", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"], optional = true }
 # --- Web / Server ---
-# Axum for HTTP routing and API endpoints
 axum = { version = "0.8", optional = true }
-# Tokio runtime for async execution (required by Axum and SQLx)
 tokio = { version = "1", features = ["full"], optional = true }
 hyper = { version = "0.14", features = ["full"], optional = true }
 
 # --- Serialization ---
-# Serde for data serialization and deserialization
 serde = { version = "1", features = ["derive"] }
-# Serde JSON support
 serde_json = "1"
 
 # --- Database ---
-# SQLx for PostgreSQL access (with macros and Rustls runtime)
-# sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "macros"], optional = true }
-# # SeaORM for async PostgreSQL ORM with migrations
-sea-orm = { version = "1.1.5", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"], optional = true }
-
-# Dotenvy to load .env configuration files (modern alternative to dotenv)
 dotenvy = "0.15"
 
 # --- Authentication ---
-# JWT encoding/decoding for authentication tokens
 jsonwebtoken = { version = "9", optional = true, default-features = false }
-# Bcrypt for password hashing
 bcrypt = { version = "0.16", optional = true }
 
 # --- Error handling ---
-# Anyhow for ergonomic error handling
 anyhow = "1.0"
 
-# --- Optional (for Logging) ---
-# Tracing framework for structured logging and diagnostics
+# --- Logging ---
 tracing = "0.1"
-# Subscriber to configure and format tracing output
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
 
+# --- Misc ---
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
-# SeaORM CLI for entity generation and migrations
 sea-orm-cli = { version = "1.1.5" }
 
 [features]
+# Default build: frontend only
 default = ["web"]
 
-# Web frontend (WASM build)
-web = ["dioxus/web"]
-
-# Desktop app (optional)
+# Frontend targets
+web     = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
+mobile  = ["dioxus/mobile"]
 
-# Mobile app (optional)
-mobile = ["dioxus/mobile"]
-
-# Server mode for SSR (Fullstack)
-# server = ["dioxus/server", "dep:tokio", "dep:sea-orm", "dep:axum", "dep:hyper"]
-server = ["dioxus/server", "dep:tokio", "dep:sea-orm", "dep:axum", "dep:hyper", "dep:jsonwebtoken", "dep:bcrypt"]
+# Backend/server target
+server = [
+    "dioxus/server",
+    "dep:tokio",
+    "dep:sea-orm",
+    "dep:axum",
+    "dep:hyper",
+    "dep:jsonwebtoken",
+    "dep:bcrypt"
+]

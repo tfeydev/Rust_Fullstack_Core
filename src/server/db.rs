@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sea_orm::*;
 
 #[cfg(feature = "server")]
-use crate::db_connection::get_db;
+use crate::server::db_connection::get_db;
 
 #[cfg(feature = "server")]
 pub use crate::entities::prelude::Employee as EmployeeEntity;
